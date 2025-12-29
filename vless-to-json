@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: $0 'vless://...'"
+  exit 1
+fi
+
+URI="$1"
+
+# Strip scheme
+URI="${URI#vless://}"
+
+# Split fragment
+MAIN="${URI%%#*}"
+
+# Split auth@host:port?query
+AUTH_HOST_QUERY="$MAIN"
+
+AUTH="${AUTH_HOST_QUERY%%@*}"
+REST="${AUTH_HOST_QUERY#*@}"
+
+UUID="$AUTH"
+
+HOST_PORT="${REST%%\?*}"
+QUERY="${REST#*\?}"
+
+ADDRESS="${HOST_PORT%%:*}"
+PORT="${HOST_PORT##*:}"
+
+# Parse query params
+declare -A Q
+IFS='&' read -ra PARAMS <<< "$QUERY"
+for p in "${PARAMS[@]}"; do
+  k="${p%%=*}"
+  v="${p#*=}"
+  Q["$k"]="$v"
+done
+
+# Required fields
+SECURITY="${Q[security]:-none}"
+NETWORK="${Q[type]:-tcp}"
+FLOW="${Q[flow]:-}"
+SNI="${Q[sni]:-}"
+FP="${Q[fp]:-chrome}"
+PBK="${Q[pbk]:-}"
+SID="${Q[sid]:-}"
+
+if [[ "$SECURITY" != "reality" ]]; then
+  echo "Only REALITY is supported by this script"
+  exit 1
+fi
+
+cat <<EOF
+{
+  "outbounds": [
+    {
+      "tag": "vless-reality",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "$ADDRESS",
+            "port": $PORT,
+            "users": [
+              {
+                "id": "$UUID",
+                "encryption": "none",
+                "flow": "$FLOW"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "$NETWORK",
+        "security": "reality",
+        "realitySettings": {
+          "serverName": "$SNI",
+          "publicKey": "$PBK",
+          "shortId": "$SID",
+          "fingerprint": "$FP"
+        }
+      }
+    }
+  ]
+}
+EOF
