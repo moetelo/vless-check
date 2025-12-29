@@ -6,6 +6,8 @@ if [[ $# -ne 1 ]]; then
   exit 1
 fi
 
+SOCKS_PORT="${SOCKS_PORT:-10888}"
+
 URI="$1"
 
 # Strip scheme
@@ -53,36 +55,53 @@ fi
 
 cat <<EOF
 {
-  "outbounds": [
-    {
-      "tag": "vless-reality",
-      "protocol": "vless",
-      "settings": {
-        "vnext": [
-          {
-            "address": "$ADDRESS",
-            "port": $PORT,
-            "users": [
-              {
-                "id": "$UUID",
-                "encryption": "none",
-                "flow": "$FLOW"
-              }
-            ]
-          }
-        ]
-      },
-      "streamSettings": {
-        "network": "$NETWORK",
-        "security": "reality",
-        "realitySettings": {
-          "serverName": "$SNI",
-          "publicKey": "$PBK",
-          "shortId": "$SID",
-          "fingerprint": "$FP"
+    "inbounds": [
+        {
+            "listen": "127.0.0.1",
+            "port": $SOCKS_PORT,
+            "protocol": "socks",
+            "settings": {
+                "udp": true
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": [
+                    "http",
+                    "tls"
+                ]
+            }
         }
-      }
-    }
-  ]
+    ],
+    "outbounds": [
+        {
+            "tag": "vless-reality",
+            "protocol": "vless",
+            "settings": {
+                "vnext": [
+                    {
+                        "address": "$ADDRESS",
+                        "port": $PORT,
+                        "users": [
+                            {
+                                "id": "$UUID",
+                                "encryption": "none",
+                                "flow": "$FLOW"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "streamSettings": {
+                "network": "$NETWORK",
+                "security": "reality",
+                "realitySettings": {
+                    "serverName": "$SNI",
+                    "publicKey": "$PBK",
+                    "shortId": "$SID",
+                    "fingerprint": "$FP"
+                }
+            }
+        }
+    ]
 }
 EOF
