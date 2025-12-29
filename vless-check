@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: $0 'vless://...'"
+  exit 1
+fi
+
+LINK="$1"
+config=$(./vless-to-json $LINK)
+
+cleanup() {
+  [[ -n "${XRAY_PID:-}" ]] && kill "$XRAY_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+xray run <<< "$config" >/dev/null 2>&1 &
+XRAY_PID=$!
+
+socks_addr=$(echo $config | jq -r '(.inbounds[0].listen + ":" + (.inbounds[0].port|tostring))')
+
+curl -fsS --proxy socks5h://$socks_addr https://wtfismyip.com/json | jq
