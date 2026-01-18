@@ -7,7 +7,8 @@ if [[ $# -ne 1 ]]; then
 fi
 
 LINK="$1"
-config=$(./vless-to-json $LINK)
+SCRIPT_DIR="$(dirname "$0")"
+config=$("$SCRIPT_DIR/vless-to-json" "$LINK")
 
 cleanup() {
   [[ -n "${XRAY_PID:-}" ]] && kill "$XRAY_PID" 2>/dev/null || true
